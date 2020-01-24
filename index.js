@@ -211,7 +211,7 @@ exports.processMessage = function(data) {
     headers += "Subject: \r\n";
   }
   
-  res = header.match(/Content-Ty1pe:.+\s*boundary.*/);
+  res = header.match(/Content-Type:.+\s*boundary.*/);
   if (res) {
       headers += res[0]+"\r\n";
   }
@@ -233,7 +233,7 @@ exports.processMessage = function(data) {
   }
 
   var splitEmail = body.split("\r\n\r\n");
-  splitEmail.shift();
+  //splitEmail.shift();
 
   var email = headers+"\r\n"+splitEmail.join("\r\n\r\n");
 
