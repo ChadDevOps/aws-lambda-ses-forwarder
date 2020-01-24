@@ -173,8 +173,9 @@ exports.fetchMessage = function(data) {
 };
 
 /**
- * Processes the message data, making updates to recipients and other headers
- * before forwarding message.
+ * Processes the message data.
+ *    Changes: Create new message, discarding all old headers due to issues with some
+ *             email processing systems (e.g. Microsoft Teams receiving emails).
  *
  * @param {object} data - Data bundle with context, email, etc.
  *
@@ -185,66 +186,58 @@ exports.processMessage = function(data) {
   var header = match && match[1] ? match[1] : data.emailData;
   var body = match && match[2] ? match[2] : '';
 
-  // Add "Reply-To:" with the "From" address if it doesn't already exists
-  if (!/^Reply-To: /mi.test(header)) {
-    match = header.match(/^From: (.*(?:\r?\n\s+.*)*\r?\n)/m);
-    var from = match && match[1] ? match[1] : '';
-    if (from) {
-      header = header + 'Reply-To: ' + from;
-      data.log({level: "info", message: "Added Reply-To address of: " + from});
-    } else {
-      data.log({level: "info", message: "Reply-To address not added because " +
-       "From address was not properly extracted."});
-    }
-  }
+  //console.log('Orig Header: ' + header);
+  //console.log('Orig Body: ' + body);
 
-  // SES does not allow sending messages from an unverified address,
-  // so replace the message's "From:" header with the original
-  // recipient (which is a verified domain)
-  header = header.replace(
-    /^From: (.*(?:\r?\n\s+.*)*)/mg,
-    function(match, from) {
-      var fromText;
-      if (data.config.fromEmail) {
-        fromText = 'From: ' + from.replace(/<(.*)>/, '').trim() +
-        ' <' + data.config.fromEmail + '>';
-      } else {
-        fromText = 'From: ' + from.replace('<', 'at ').replace('>', '') +
-        ' <' + data.originalRecipient + '>';
+  var res;
+
+  var headers = "From: "+data.config.fromEmail+"\r\n";
+
+  res = header.match(/^From: (.*(?:\r?\n\s+.*)*)/m);    
+  if (res) {
+    headers += "Reply-To: "+res[1]+"\r\n";
+  }else{
+    headers += "Reply-To: "+res[1]+"\r\n";
+  }
+  
+  headers += "X-Original-To: "+data.originalRecipients+"\r\n";
+  
+  headers += "To: "+data.recipients+"\r\n";
+
+  res = header.match(/^Subject: (.*)/m);    
+  if (res) {
+    headers += "Subject: "+data.config.subjectPrefix+res[1]+"\r\n";
+  }else{
+    headers += "Subject: \r\n";
+  }
+  
+  res = header.match(/Content-Ty1pe:.+\s*boundary.*/);
+  if (res) {
+      headers += res[0]+"\r\n";
+  }
+  else {
+      res = header.match(/^Content-Type:(.*)/m);
+      if (res) {
+          headers += res[0]+"\r\n";
       }
-      return fromText;
-    });
-
-  // Add a prefix to the Subject
-  if (data.config.subjectPrefix) {
-    header = header.replace(
-      /^Subject: (.*)/mg,
-      function(match, subject) {
-        return 'Subject: ' + data.config.subjectPrefix + subject;
-      });
   }
 
-  // Replace original 'To' header with a manually defined one
-  if (data.config.toEmail) {
-    header = header.replace(/^To: (.*)/mg, () => 'To: ' + data.config.toEmail);
+  res = header.match(/^Content-Transfer-Encoding:(.*)/m);
+  if (res) {
+      headers += res[0]+"\r\n";
   }
 
-  // Remove the Return-Path header.
-  header = header.replace(/^Return-Path: (.*)\r?\n/mg, '');
+  res = header.match(/^MIME-Version:(.*)/m);
+  if (res) {
+      headers += res[0]+"\r\n";
+  }
 
-  // Remove Sender header.
-  header = header.replace(/^Sender: (.*)\r?\n/mg, '');
+  var splitEmail = body.split("\r\n\r\n");
+  splitEmail.shift();
 
-  // Remove Message-ID header.
-  header = header.replace(/^Message-ID: (.*)\r?\n/mig, '');
+  var email = headers+"\r\n"+splitEmail.join("\r\n\r\n");
 
-  // Remove all DKIM-Signature headers to prevent triggering an
-  // "InvalidParameterValue: Duplicate header 'DKIM-Signature'" error.
-  // These signatures will likely be invalid anyways, since the From
-  // header was modified.
-  header = header.replace(/^DKIM-Signature: .*\r?\n(\s+.*\r?\n)*/mg, '');
-
-  data.emailData = header + body;
+  data.emailData = email;
   return Promise.resolve(data);
 };
 
