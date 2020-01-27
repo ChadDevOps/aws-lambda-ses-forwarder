@@ -13,10 +13,50 @@ it and send it on to the chosen destination.
 
 ## Changes (ChadDevOps)
 
-- Remove original email headers from S3 email.
+- Remove original email headers from S3 email. There were issues where some emails were being blocked or rejected by Microsoft Teams due to incorrect headers.
 - Create new email and send through SES.
+- Added ability to check ENV vars for users or domains. 
+- Added a "CATCHALL" forwarder.
+- Append From/To at the end of emails to see original source/dest when forwarding (primarily due to posting to MS Teams to see the source/dest emails). 
+- Added fromPrefix in the defaultConfig. 
 
-There were issues where some emails were being blocked or rejected by Microsoft Teams due to incorrect headers.
+### defaultConfig fromPrefix
+
+If exists, the fromEmail will be modified to use the verified SES destination domain with the prefix. 
+
+Example:
+
+SES has two verified domains. 
+- yourdomain.com
+- yourdomain2.com
+
+defaultConfig has the following set
+- fromPrefix: "noreply"
+
+Any email sent to yourdomain.com will show have the following from address:
+- noreply@yourdomain.com
+
+Any email sent to yourdomain2.com will show have the following from address:
+- noreply@yourdomain2.com
+
+NOTE: See limitations below. The email must be verified in SES emails in order to send from the address.
+
+### ENV Vars
+
+In Lambda, under your function code/in-line editor you'll find the Environment variables section. The ENV Variables will be searched after the defaultConfig.
+
+#### Examples (note all ENV Vars are capatilized):
+
+A hard-coded CATCHALL, if it exists as an ENV Variable, any email destination that does not match in defaultConfig will utilize the CATCHALL email(s) in the ENV Variable CATCHALL.
+```
+CATCHALL = random.yourdomain.com@amer.teams.ms
+CATCHALL = random.yourdomain.com@amer.teams.ms,yourname@yourdomain.com
+```
+You can also use the ENV Variables for catching all emails to domain names. Examples of catching all emails to yourdomain.com and forwarding to yourname@yourdomain.com:
+```
+YOURDOMAINCOM = yourname@yourdomain.com
+YOURDOMAIN2COM = yourname@yourdomain.com
+````
 
 ## Limitations
 
