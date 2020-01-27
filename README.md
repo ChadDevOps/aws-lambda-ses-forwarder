@@ -22,7 +22,7 @@ it and send it on to the chosen destination.
 
 ### defaultConfig fromPrefix
 
-If exists, the fromEmail will be modified to use the verified SES destination domain with the prefix. 
+If fromPrefix exists, the fromEmail will be modified to use the verified SES destination domain with the prefix. 
 
 Example:
 
@@ -33,11 +33,11 @@ SES has two verified domains.
 defaultConfig has the following set
 - fromPrefix: "noreply"
 
-Any email sent to yourdomain.com will show have the following from address:
-- noreply@yourdomain.com
+Any email sent to yourdomain.com will show the following from address:
+- FROM: noreply@yourdomain.com
 
-Any email sent to yourdomain2.com will show have the following from address:
-- noreply@yourdomain2.com
+Any email sent to yourdomain2.com will show the following from address:
+- FROM: noreply@yourdomain2.com
 
 NOTE: See limitations below. The email must be verified in SES emails in order to send from the address.
 
