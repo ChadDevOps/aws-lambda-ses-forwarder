@@ -29,6 +29,7 @@ console.log("AWS Lambda SES Forwarder // @arithmetric // Version 4.2.0");
 //   and domain part of an email address (i.e. `info`).
 var defaultConfig = {
   fromEmail: "noreply@example.com",
+  fromPrefix: "",
   subjectPrefix: "",
   emailBucket: "s3-bucket-name",
   emailKeyPrefix: "emailsPrefix/",
