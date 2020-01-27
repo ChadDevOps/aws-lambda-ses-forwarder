@@ -11,7 +11,7 @@ Instead of setting up an email server on an EC2 instance to handle email
 redirects, use SES to receive email, and the included Lambda script to process
 it and send it on to the chosen destination.
 
-## Changes (Balandar)
+## Changes (ChadDevOps)
 
 - Remove original email headers from S3 email.
 - Create new email and send through SES.
