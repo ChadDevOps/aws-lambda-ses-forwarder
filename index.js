@@ -110,7 +110,29 @@ exports.transformRecipients = function(data) {
         newRecipients = newRecipients.concat(
           data.config.forwardMapping[origEmailUser]);
         data.originalRecipient = origEmail;
-      }
+      } else{
+
+        // email user format: user@domain.com -> USER
+        origEmailUser = origEmailUser.replace(/-/g, '_').toUpperCase();
+        
+        // domain format: @domain.com -> DOMAINCOM
+        origEmailDomain = origEmailKey.slice(pos).replace(/(@|-|\.)/g, '').toUpperCase();
+        
+        console.log("origEmailUser " + origEmailUser);
+        console.log("origEmailDomain " + origEmailDomain);
+        
+        if (origEmailUser && process.env.hasOwnProperty(origEmailUser)) {
+          newRecipients = newRecipients.concat(process.env[origEmailUser]);
+          data.originalRecipient = origEmail;
+        }else if (origEmailDomain && process.env.hasOwnProperty(origEmailDomain)) {
+          newRecipients = newRecipients.concat(process.env[origEmailDomain]);
+          data.originalRecipient = origEmail;
+        }else if(process.env.CATCHALL){
+          newRecipients = newRecipients.concat(process.env.CATCHALL);
+          data.originalRecipient = origEmail;
+        }
+        
+      } 
     }
   });
 
@@ -189,15 +211,25 @@ exports.processMessage = function(data) {
   //console.log('Orig Header: ' + header);
   //console.log('Orig Body: ' + body);
 
-  var res;
+  var res, headers;
 
-  var headers = "From: "+data.config.fromEmail+"\r\n";
+  if(data.config.fromPrefix){
+    var tmp = "" + data.originalRecipients;
+    res = tmp.match(/^.*@(.*),?.*?/m); 
+    if (res) {
+      headers = "From: "+data.config.fromPrefix+"@"+res[1]+"\r\n";
+    }else{
+      headers = "From: "+data.config.fromEmail+"\r\n";
+    }    
+  }else{
+    headers = "From: "+data.config.fromEmail+"\r\n";
+  }
 
   res = header.match(/^From: (.*(?:\r?\n\s+.*)*)/m);    
   if (res) {
     headers += "Reply-To: "+res[1]+"\r\n";
   }else{
-    headers += "Reply-To: "+res[1]+"\r\n";
+    headers += "Reply-To: "+data.config.fromEmail+"\r\n";
   }
   
   headers += "X-Original-To: "+data.originalRecipients+"\r\n";
@@ -208,12 +240,12 @@ exports.processMessage = function(data) {
   if (res) {
     headers += "Subject: "+data.config.subjectPrefix+res[1]+"\r\n";
   }else{
-    headers += "Subject: \r\n";
+    headers += "Subject: "+data.config.subjectPrefix+" (FROM: "+data.config.fromEmail+" TO: "+data.originalRecipients+")\r\n";
   }
   
   res = header.match(/Content-Type:.+\s*boundary.*/);
   if (res) {
-      headers += res[0]+"\r\n";
+    headers += res[0]+"\r\n";
   }
   else {
       res = header.match(/^Content-Type:(.*)/m);
@@ -232,8 +264,14 @@ exports.processMessage = function(data) {
       headers += res[0]+"\r\n";
   }
 
+   res = body.match(/(<\/body[\s\S]*>)/im);
+  if ( res ){
+      body = body.replace(/<\/body[\s\S]*>/i, "\r\nFROM: "+data.config.fromEmail+" TO: "+data.originalRecipients+"\r\n</body>");
+  }else{
+      body = body +  "\r\nFROM: "+data.config.fromEmail+" TO: "+data.originalRecipients+"\r\n";
+  }
+
   var splitEmail = body.split("\r\n\r\n");
-  //splitEmail.shift();
 
   var email = headers+"\r\n"+splitEmail.join("\r\n\r\n");
 
@@ -250,8 +288,6 @@ exports.processMessage = function(data) {
  */
 exports.sendMessage = function(data) {
   var params = {
-    Destinations: data.recipients,
-    Source: data.originalRecipient,
     RawMessage: {
       Data: data.emailData
     }
