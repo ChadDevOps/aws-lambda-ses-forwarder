@@ -226,13 +226,15 @@ exports.processMessage = function(data) {
     headers = "From: "+data.config.fromEmail+"\r\n";
   }
 
-  res = header.match(/^From: (.*(?:\r?\n\s+.*)*)/m);    
+  var replyto;
+  //res = header.match(/^From: (.*(?:\r?\n\s+.*)*)/m);
+  res = header.match(/^From: (.*)/m);    
   if (res) {
     headers += "Reply-To: "+res[1]+"\r\n";
-    var replyto=res[1];
+    replyto=res[1];
   }else{
     headers += "Reply-To: "+data.config.fromEmail+"\r\n";
-    var replyto=data.config.fromEmail;
+    replyto=data.config.fromEmail;
   }
   
   headers += "X-Original-To: "+data.originalRecipients+"\r\n";
@@ -267,11 +269,18 @@ exports.processMessage = function(data) {
       headers += res[0]+"\r\n";
   }
 
-   res = body.match(/(<\/body[\s\S]*>)/im);
+  res = body.match(/(<\/body[\s\S]*>)/im);
   if ( res ){
-      body = body.replace(/<\/body[\s\S]*>/i, "\r\nFROM: "+replyto+" TO: "+data.originalRecipients+"\r\n</body>");
+      replyto = replyto.replace('<','&lt;');
+      replyto = replyto.replace('>','&gt;');
+      body = body.replace(/<\/body[\s\S]*>/i, "\r\n(FROM: "+replyto+" TO: "+data.originalRecipients+")\r\n</body>");
   }else{
-      body = body +  "\r\nFROM: "+replyto+" TO: "+data.originalRecipients+"\r\n";
+      res = body.match(/^Content-Transfer-Encoding: quoted-printable/m);
+      if(res){
+          body = body.replace(/Content-Transfer-Encoding: quoted-printable/i, "Content-Transfer-Encoding: quoted-printable\r\n\r\n(FROM: "+replyto+" TO: "+data.originalRecipients+")\r\n");
+      }else{
+          body = body +  "\r\n(FROM: "+replyto+" TO: "+data.originalRecipients+")\r\n";
+      }
   }
 
   var splitEmail = body.split("\r\n\r\n");
