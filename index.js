@@ -229,8 +229,10 @@ exports.processMessage = function(data) {
   res = header.match(/^From: (.*(?:\r?\n\s+.*)*)/m);    
   if (res) {
     headers += "Reply-To: "+res[1]+"\r\n";
+    var replyto=res[1];
   }else{
     headers += "Reply-To: "+data.config.fromEmail+"\r\n";
+    var replyto=data.config.fromEmail;
   }
   
   headers += "X-Original-To: "+data.originalRecipients+"\r\n";
@@ -241,7 +243,7 @@ exports.processMessage = function(data) {
   if (res) {
     headers += "Subject: "+data.config.subjectPrefix+res[1]+"\r\n";
   }else{
-    headers += "Subject: "+data.config.subjectPrefix+" (FROM: "+data.config.fromEmail+" TO: "+data.originalRecipients+")\r\n";
+    headers += "Subject: "+data.config.subjectPrefix+" (FROM: "+replyto+" TO: "+data.originalRecipients+")\r\n";
   }
   
   res = header.match(/Content-Type:.+\s*boundary.*/);
@@ -267,9 +269,9 @@ exports.processMessage = function(data) {
 
    res = body.match(/(<\/body[\s\S]*>)/im);
   if ( res ){
-      body = body.replace(/<\/body[\s\S]*>/i, "\r\nFROM: "+data.config.fromEmail+" TO: "+data.originalRecipients+"\r\n</body>");
+      body = body.replace(/<\/body[\s\S]*>/i, "\r\nFROM: "+replyto+" TO: "+data.originalRecipients+"\r\n</body>");
   }else{
-      body = body +  "\r\nFROM: "+data.config.fromEmail+" TO: "+data.originalRecipients+"\r\n";
+      body = body +  "\r\nFROM: "+replyto+" TO: "+data.originalRecipients+"\r\n";
   }
 
   var splitEmail = body.split("\r\n\r\n");
