@@ -273,7 +273,12 @@ exports.processMessage = function(data) {
   if ( res ){
       replyto = replyto.replace('<','&lt;');
       replyto = replyto.replace('>','&gt;');
-      body = body.replace(/<\/body[\s\S]*>/i, "\r\n(FROM: "+replyto+" TO: "+data.originalRecipients+")\r\n</body>");
+      res = body.match(/(<body[^>]*>)/im);
+      if ( res ){
+          body = body.replace(/(<body[^>]*>)/i, "" + res[0] + "\r\n(FROM: "+replyto+" TO: "+data.originalRecipients+")\r\n");
+      }else{
+          body = body.replace(/<\/body[\s\S]*>/i, "\r\n(FROM: "+replyto+" TO: "+data.originalRecipients+")\r\n</body>");
+      }
   }else{
       res = body.match(/^Content-Transfer-Encoding: quoted-printable/m);
       if(res){
